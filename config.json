@@ -1,0 +1,17 @@
+{
+ "timeout": 4000,
+ "default_url": "9gag.com",
+ "output_dir": "generated",
+ "background_color": "#000",
+ "caption": {
+  "use_jimp": false,
+  "css_font": "font-size: 20px;color: #fff;",
+  "font_path": "test.fnt",
+  "margin": {
+   "top": 10,
+   "left": 10,
+   "right": 10,
+   "bottom": 10
+  }
+ }
+}

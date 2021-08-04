@@ -1,0 +1,18 @@
+{
+  "name": "timekillersparser",
+  "version": "0.0.1",
+  "description": "posts parsing idk",
+  "main": "main.js",
+  "scripts": {
+    "test": "tap *.js",
+    "start": "node main.js"
+  },
+  "author": "garc0",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "colors": "^1.4.0",
+    "jimp": "^0.16.1",
+    "jshint": "^2.13.0",
+    "puppeteer": "^10.1.0"
+  }
+}
