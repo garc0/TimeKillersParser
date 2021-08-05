@@ -1,7 +1,8 @@
 {
  "timeout": 4000,
+ "chromium_path": "auto",
  "default_url": "9gag.com",
- "output_dir": "generated",
+ "output_dir": "output",
  "background_color": "#000",
  "caption": {
   "use_jimp": false,

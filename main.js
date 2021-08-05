@@ -228,9 +228,12 @@ const sites_table = function(name){
 }
 
 var dump_posts = async function (site, subaddr = '/', config){
+    var browser_path = config.chromium_path !== 'auto' ? config.chromium_path : '';
+
     const browser = await puppeteer.launch({
          headless: true, 
          ignoreHTTPSErrors: true, 
+         executablePath: browser_path
          //args: ['--no-sandbox', '--disable-setuid-sandbox'] 
         });
 
@@ -256,6 +259,7 @@ var dump_posts = async function (site, subaddr = '/', config){
 const config_path = 'config.json';
 const default_config = {
     timeout: 4000,
+    chromium_path: "auto",
     default_url: "9gag.com",
     output_dir: "generated",
     background_color: '#000',
@@ -302,6 +306,12 @@ var save_image = async function(browser, config, url, text){
     });
 
     const file_name = `/${config.output_dir}/image_${Math.floor(Math.random() * 10000)}.png`;
+
+    const dir = `${__dirname}/${config.output_dir}`;
+        
+    if (!fs.existsSync(dir)){
+        fs.mkdirSync(dir, { recursive: true });
+    }   
 
     async function screenshotDOMElement(rect, padding = 0) {
         return await page.screenshot({
@@ -367,9 +377,11 @@ async function main(){
            
             let gen_progress = loadingAnimation("Generating picture... ".green);
 
+            var browser_path = config.chromium_path !== 'auto' ? config.chromium_path : '';
             const browser = await puppeteer.launch({
                 headless: true, 
                 ignoreHTTPSErrors: true, 
+                executablePath: browser_path,
                 args: ['--no-sandbox'] 
             });
             
@@ -377,7 +389,7 @@ async function main(){
                 const saved_image_name = await save_image(browser, config, ret[i].img, ret[i].title);
                 readline.clearLine(process.stdout, 0)
                 process.stdout.write("\r" + "✔");
-                console.log(` [`+ `${i}`.green +`]`, `${ret[i].title}`.red, '=>', saved_image_name);
+                console.log(` [`+ `${i}`.green +`]`, `${ret[i].title}`.red, '=>'.green, saved_image_name);
             }
 
             let pages = await browser.pages()
