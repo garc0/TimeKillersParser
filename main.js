@@ -17,7 +17,7 @@ var DTF_parse = async function (page){
         })
     });
     await page.waitForSelector(".andropov_image");
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise(resolve => setTimeout(resolve, 2000));
     const dimensions = await page.evaluate((len) => {
       const items = document.getElementsByClassName("feed__item");
       var to_return = [];
@@ -29,18 +29,14 @@ var DTF_parse = async function (page){
           if(img.length !== 0 && typeof img[0] !== 'undefined'){
               console.log(img[0].src);
               img = img[0].src;
-              const reg = /(.*)(-\/preview\/|)/gm;
-              if(reg.exec(img)[1] != null)
-                img = reg.exec(img)[1];
+              img = img.replace(/-\/preview\/(.*)/gm, "");
           } else { 
-              img = e.getElementsByClassName("andropov_video__dummy");
-              if(img.length !== 0 && typeof img[0] !== 'undefined'){
-                  var reg = /url\(\"(.*)\"\)/gm;
-                  if(reg.exec(img[0]) != null){
-                    img = reg.exec(img[0].style.backgroundImage)[1];
-                  }
-              }
-              else img = "";
+              //img = e.getElementsByClassName("andropov_video__dummy");
+              //if(img.length !== 0 && typeof img[0] !== 'undefined'){
+              //    var reg = /url\(\"(.*)\"\)/gm;
+              //    img = img[0].innerHTML;//.replace(/url\(\"(.*)\"\)/gm, "");
+             // }
+              img = "";
           }
 
           var title = e.getElementsByClassName("content-title");
@@ -48,13 +44,21 @@ var DTF_parse = async function (page){
           if(title.length !== 0 && typeof title[0] !== 'undefined')
               title = title[0].innerText;
           else title = "";
+
+          var content = e.getElementsByClassName("content-container")[0];
+          var description = content.getElementsByClassName("l-island-a");
+          if(description.length != 0 && description[1] != undefined){
+                description = description[1].innerText;
+          }else{
+              description = "";
+          }
   
-          if(title !== "" & img !== "")
+          if(title !== "" && img !== "")
             to_return.push({ 
                 title: title,
+                description: description,
                 img: img
             });
-      
       };
       return to_return 
     }, _length);
@@ -74,6 +78,9 @@ var yaplakal_parse = async function(page){
         for(let i = 0; i < labels.length; i++){
             var _title = labels[i];
             var _img = data[i];
+            var _description = data[i].innerText;
+
+            _description = _description.replace(/(.*)(\nЧитать.дальше\.\.\.)/gm, "");
 
             _title = _title.getElementsByClassName("subtitle")[0].innerText;
 
@@ -82,9 +89,10 @@ var yaplakal_parse = async function(page){
                 _img = _img[0].src;
             else _img = "";
 
-            if(_img !== "" && _title !== "")
+            if(_title !== "" && _img !== "")
             to_return.push({
                 title: _title,
+                description: _description,
                 img: _img
             });
         }
@@ -142,10 +150,19 @@ var VC_parse = async function (page){
           if(title.length !== 0 && typeof title[0] !== 'undefined')
               title = title[0].innerText;
           else title = "";
+
+          var content = e.getElementsByClassName("content-container")[0];
+          var description = content.getElementsByClassName("l-island-a");
+          if(description.length != 0 && description[1] != undefined){
+                description = description[1].innerText;
+          }else{
+              description = "";
+          }
   
-          if(img !== "" && title !== "")
+          if(title !== "" && img !== '')
             to_return.push({ 
                 title: title,
+                description: description,
                 img: img
             });
         };
@@ -177,12 +194,17 @@ var NineGAG_parse = async function(page){
             if(_title !== "" && _img !== "")
                 to_return.push({
                     title: _title,
+                    description: "",
                     img: _img
                 });
         }
 
         return to_return;
     });
+}
+
+var Telegram_parse = async function(page){
+
 }
 
 function write_down_image(url, text, font_file = 'test.fnt', caption_background = '#FFFFFF'){
@@ -223,7 +245,7 @@ const sites_table = function(name){
         case 'dtf.ru': return DTF_parse;
         case 'vc.ru': return VC_parse;
     }
-    console.err('new site???');
+    console.log('new site???');
     return;
 }
 
@@ -231,7 +253,7 @@ var dump_posts = async function (site, subaddr = '/', config){
     var browser_path = config.chromium_path !== 'auto' ? config.chromium_path : '';
 
     const browser = await puppeteer.launch({
-         headless: true, 
+         headless: false, 
          ignoreHTTPSErrors: true, 
          executablePath: browser_path
          //args: ['--no-sandbox', '--disable-setuid-sandbox'] 
@@ -242,7 +264,7 @@ var dump_posts = async function (site, subaddr = '/', config){
     await page.setDefaultNavigationTimeout(0);
     page.goto(`https://${site}${subaddr}`);
     await new Promise(resolve => setTimeout(resolve, config.timeout));
-    
+
 
     const result = await sites_table(site)(page);
     await page._client.send("Page.stopLoading");
@@ -273,30 +295,43 @@ const default_config = {
             right: 10,
             bottom: 10
         }
+    },
+    description:{
+        css_font: "font-size: 14px;color: #fff;",
+        margin:{
+            top: 10,
+            left: 10,
+            right: 10,
+            bottom: 10
+        }
     }
 };
 
-var save_image = async function(browser, config, url, text){
+var save_image = async function(browser, config, url, text, description){
     const page = await browser.newPage();
     await page.setViewport({ width: 800, height: 600 })
     await page.setDefaultNavigationTimeout(0);
     await page.goto(`${__dirname}/image_templ.html`);
 
-    await page.evaluate(async(url, text, config) => {
+    await page.evaluate(async(url, text, description, config) => {
             return await new Promise(resolve => {
-                const img = document.getElementsByClassName("image-data")[0];
-                img.onload = function(){
-                    resolve(img.src)
+                if(url != ""){
+                    const img = document.getElementsByClassName("image-data")[0];
+                    img.onload = function(){
+                        resolve(img.src)
+                    }
+                    img.src = url;
                 }
-                img.src = url;
                 document.getElementsByClassName("image-caption")[0].innerHTML = text;
                 document.getElementsByClassName("image-caption")[0].style = `word-wrap: break-word;` + config.caption.css_font;
+                document.getElementsByClassName("image-description")[0].innerText = description;
+                document.getElementsByClassName("image-description")[0].style = `word-wrap: break-word;` + config.description.css_font;
 
                 document.body.style.backgroundColor = config.background_color;
                 document.body.style.font = `14px -apple-system,BlinkMacSystemFont,Segoe UI,Helvetica Neue,Arial,Helvetica,Geneva,sans-serif`;
                 document.body.style.fontSmooth = `antialiased`;
         })
-    }, url, text, config);
+    }, url, text, description, config);
     const w = await page.evaluate(() => {
         const _w = document.getElementsByClassName("image-data")[0].naturalWidth;
         const data_block = document.getElementsByClassName("data")[0];
@@ -327,6 +362,28 @@ var save_image = async function(browser, config, url, text){
     await screenshotDOMElement(w, 5);
 
     return file_name;
+}
+
+var save_to_clipboard = async function(browser, image_path){
+    const page = await browser.newPage();
+    await page.setViewport({ width: 800, height: 600 })
+    await page.setDefaultNavigationTimeout(0);
+    await page.goto(image_path);
+
+    
+    await page.evaluate(async(url) => {
+        return await new Promise(async resolve => {
+            const img = document.getElementsByTagName("img")[0];
+            img.onload = function(){
+                img.focus();
+                document.execCommand('copy') 
+                resolve(img.src)
+            }
+            img.src = url;
+        });
+    }, image_path);
+
+    return;
 }
 
 function loadingAnimation(
@@ -373,25 +430,31 @@ async function main(){
             process.stdout.write("\r" + "✔" + " Dumped total ".green + ":".grey + ` ${ret.length}`);
             console.log('');
             clearInterval(dump_progress);
-            //console.log(ret);
+            console.log(ret);
            
             let gen_progress = loadingAnimation("Generating picture... ".green);
 
             var browser_path = config.chromium_path !== 'auto' ? config.chromium_path : '';
             const browser = await puppeteer.launch({
-                headless: true, 
+                headless: false, 
                 ignoreHTTPSErrors: true, 
                 executablePath: browser_path,
                 args: ['--no-sandbox'] 
             });
             
             for(let i = 0; i < ret.length; i++){
-                const saved_image_name = await save_image(browser, config, ret[i].img, ret[i].title);
+                const content = ret[i];
+                const saved_image_name = await save_image(browser, config, content.img, content.title, content.description);
                 readline.clearLine(process.stdout, 0)
                 process.stdout.write("\r" + "✔");
                 console.log(` [`+ `${i}`.green +`]`, `${ret[i].title}`.red, '=>'.green, saved_image_name);
-            }
 
+                if(i == 0){
+                    save_to_clipboard(browser, `${__dirname}` + saved_image_name);
+                    console.log(`  [`+ `${i}`.green +`]`, `Copied to clipboard!`.green);
+                }
+            }
+            await new Promise(resolve => setTimeout(resolve, 500));
             let pages = await browser.pages()
             await Promise.all(pages.map(page =>page.close()))
             await browser.close()
